@@ -199,7 +199,6 @@ class VCSFavorite(object):
                           db.like_escape(starts_with[:-1] if starts_with[-1:] == '/' else starts_with) + '%',
                           )
                        )
-        print len(cursor.rows)
         for row in cursor:
             favorites.append(VCSFavorite(env, db_row=row))
 
