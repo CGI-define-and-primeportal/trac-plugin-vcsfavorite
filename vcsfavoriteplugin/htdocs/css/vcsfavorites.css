@@ -1,0 +1,14 @@
+#s2id_favorites-select2 { width:500px; }
+.favorites-dropdown .select2-result-label { position:relative; }
+.favorites-dropdown i {
+  bottom: 0;
+  padding: 7px 8px 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+.favorites-dropdown .icon-spin {
+  bottom: auto;
+  margin: 7px 8px 0;
+  padding: 0;
+}

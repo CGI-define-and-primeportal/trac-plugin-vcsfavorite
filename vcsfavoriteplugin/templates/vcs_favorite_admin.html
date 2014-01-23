@@ -1,0 +1,70 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:i18n="http://genshi.edgewall.org/i18n">
+  <xi:include href="admin.html" />
+  <head>
+    <title>VCS Favorite Admin</title>
+  </head>
+
+  <body>
+    <h2>VCS Favorite Admin</h2>
+    <form class="box-primary" method="post">
+	    <div class="field">
+	    <py:choose>
+	    	<strong py:when="edit">Edit Favorite</strong>
+	    	<strong py:otherwise="">Add Favorite</strong>
+	    </py:choose>
+	    </div>
+	    <div class="field">
+	    	<label class="fixed-width-label">Path:</label>
+	    	<py:choose>
+	    		<input py:when="edit" type="text" id="favorite_path" name="favorite_path" value="$favorite.path" class="favorite_path required"/>
+	    		<input py:otherwise="" type="text" id="favorite_path" name="favorite_path" value="" class="favorite_path required"/>
+	    	</py:choose>
+	    </div>
+	   	<div class="field">
+	    	<label class="fixed-width-label">Description:</label>
+	    	<py:choose>
+		       	<textarea py:when="edit" rows="4" cols="10" name="description">$favorite.description</textarea>
+		       	<textarea py:otherwise="" rows="4" cols="10" name="description"/>
+		    </py:choose>   	
+	    </div>
+	    <py:choose>
+	    	<py:when test="edit">
+	    		<button type="submit" name="edit" value="${_('Save Favorite')}" class="btn btn-mini btn-primary"><i class="icon-hdd icon-white"></i> Save Favorite</button>
+        		<button type="submit" name="cancel" value="${_('Save Favorite')}" class="btn btn-mini btn-primary"><i class="icon-remove icon-white"></i> Cancel</button>
+        	</py:when>
+        	<button py:otherwise="" type="submit" name="add" class="btn btn-mini btn-primary" value="${_('Create Favorite')}" ><i class="icon-plus-sign icon-white"></i> Create Favorite</button>
+        </py:choose>
+    </form>
+    <py:choose>
+	    <form py:when="vcs_favorites" method="post" action="">
+		    <table class="rounded border-header full-width striped" id="vcs_favoriteslist">
+		        <thead>
+					<tr>
+					  <th class="sel" py:if="'TRAC_ADMIN' in req.perm">&nbsp;</th>
+					  <th>Path</th><th>owner</th><th>Description</th>
+					</tr>
+				</thead>
+		        <tbody>
+				<tr py:for="i, favorite in enumerate(vcs_favorites)" class="${i % 2 == 0 and 'even' or 'odd'}">
+				    <td class="sel" py:if="'TRAC_ADMIN' in req.perm"><input type="checkbox" class="selcheckbox" name="del_sel" value="$favorite._id"/></td>
+					<td><a href="${href.admin('versioncontrol','favorites',favorite._id)}">$favorite.path</a></td>
+					<td>$favorite.owner</td>
+					<td>$favorite.description</td>
+				</tr>
+		    	</tbody>
+		    </table>
+		    <button type="submit" name="remove" value="${_('Remove selected items')}" id="remove" disabled="disabled" class="btn btn-mini btn-danger remove-button">
+              <i class="icon-trash icon-white"></i> Remove selected items
+            </button>
+	    </form>
+	    <p py:otherwise="" class="help">No favorites are configured.</p>
+    </py:choose>
+  </body>
+
+</html>
