@@ -5,7 +5,6 @@ $(document).ready(function() {
     var newState = target.hasClass('icon-star-empty'),
         path = data.id,
         defaultClasses = 'toggleable';
-    console.log(path);
     target.attr('class', defaultClasses + ' icon-spinner icon-spin');
     $.post(window.tracBaseUrl + 'vcsfavorites/' + (newState ? 'add' : 'remove'), {
       path:path,
@@ -50,14 +49,11 @@ $(document).ready(function() {
 
   // Generate our select2 object
   var $select = $(".favorites-select2").select2(select2Options);
-  console.log($select);
   // Get the underlying instance methods    
   var select2_data = $select.data("select2");
-  console.log(select2_data);
   // Overwrite the onselect method, to check for a click on our icon
   select2_data.onSelect = (function(fn) {
     return function(data, options) {
-      console.log(data,options);
       var target;            
       if (options != null) target = $(options.target);
       if (target && target.hasClass('toggleable')) {

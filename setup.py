@@ -48,7 +48,6 @@ setup(
         'trac.plugins': [
             'vcsfavoriteplugin.admin = vcsfavoriteplugin.admin',
             'vcsfavoriteplugin.api = vcsfavoriteplugin.api',
-            'vcsfavoriteplugin.web_ui = vcsfavoriteplugin.web_ui',
             ]},
     install_requires = ['Trac>=0.12', 'Genshi>=0.5',],
 )
