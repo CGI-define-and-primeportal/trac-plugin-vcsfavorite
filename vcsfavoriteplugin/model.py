@@ -71,7 +71,7 @@ class VCSFavoriteDBManager(Component):
 class VCSFavorite(object):
 
     def __init__(self, env, db_row=None, path='', owner='',
-                 _id=None, description=u'', published=True):
+                 _id=None, description=u'', published=0):
 
         self.env = env
 
@@ -206,10 +206,6 @@ class VCSFavorite(object):
 
     @classmethod
     def remove_one_by_path(cls, path, env):
-#         try:
-#             int_id = int(_id)
-#         except ValueError:
-#             env.log.error("%s is not an integer. Potential Sql injection atempt" % _id)
         rowcount = 0
         #paths is only stored with out trailing /
         path = path[:-1] if path[-1:] == '/' else path
