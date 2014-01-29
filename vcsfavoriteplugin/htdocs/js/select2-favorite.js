@@ -1,10 +1,42 @@
 // Once the page is fully loaded
 $(document).ready(function() {
-  // Toggle the favorite, this will need to do an Ajax call, and then should redraw the icon
+  $(".favorites-select2").vcsFavorites();
+});
+
+(function($) {
+  $.fn.vcsFavorites = function() {
+
+    return this.each(function() {
+
+      // Generate our select2 object
+      var $select = $(this).select2(select2Options);
+
+      // Get the underlying instance methods
+      var select2_data = $select.data("select2");
+
+      // Overwrite the onselect method, to check for a click on our icon
+      select2_data.onSelect = (function(fn) {
+        return function(data, options) {
+          var target;
+          if(options != null) target = $(options.target);
+          if(target && target.hasClass('toggleable')) {
+            toggle_favorite(data, target);
+          }
+          else {
+            return fn.apply(this, arguments);
+          }
+        }
+      })(select2_data.onSelect);
+    });
+  };
+
+  // Toggle the favorite, this will need to do an Ajax call,
+  // and then should redraw the icon
   function toggle_favorite(data,target) {
     var newState = target.hasClass('icon-star-empty'),
         path = data.id,
         defaultClasses = 'toggleable';
+
     target.attr('class', defaultClasses + ' icon-spinner icon-spin');
     $.post(window.tracBaseUrl + 'vcsfavorites/' + (newState ? 'add' : 'remove'), {
       path:path,
@@ -18,6 +50,7 @@ $(document).ready(function() {
       }
     });
   }
+
   var select2Options = {
     width: "off",
     placeholder :'Search directories or select from favorites',
@@ -47,21 +80,4 @@ $(document).ready(function() {
     }
   }
 
-  // Generate our select2 object
-  var $select = $(".favorites-select2").select2(select2Options);
-  // Get the underlying instance methods    
-  var select2_data = $select.data("select2");
-  // Overwrite the onselect method, to check for a click on our icon
-  select2_data.onSelect = (function(fn) {
-    return function(data, options) {
-      var target;            
-      if (options != null) target = $(options.target);
-      if (target && target.hasClass('toggleable')) {
-        toggle_favorite(data, target);
-      }
-      else {
-        return fn.apply(this, arguments);
-      }
-    }
-  })(select2_data.onSelect);
-});
+}(jQuery));
