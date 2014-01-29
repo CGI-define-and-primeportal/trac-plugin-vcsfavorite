@@ -4,12 +4,16 @@ $(document).ready(function() {
 });
 
 (function($) {
-  $.fn.vcsFavorites = function() {
+  $.fn.vcsFavorites = function(opts) {
+
+    // Allow the user to add custom select2 options
+    opts = opts || {};
+    opts = $.extend(select2Options, opts);
 
     return this.each(function() {
 
       // Generate our select2 object
-      var $select = $(this).select2(select2Options);
+      var $select = $(this).select2(opts);
 
       // Get the underlying instance methods
       var select2_data = $select.data("select2");
@@ -78,6 +82,6 @@ $(document).ready(function() {
       }
       return icon + text;
     }
-  }
+  };
 
 }(jQuery));
