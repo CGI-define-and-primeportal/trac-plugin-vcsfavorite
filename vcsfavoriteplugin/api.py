@@ -20,19 +20,14 @@ class FavoritesAndSuggestionPathSearch(Component):
         if not req.get_header('X-Requested-With') == 'XMLHttpRequest':
             raise TracError('This resource works only with header X-Requested-With:XMLHttpRequest')
 
-        rm = RepositoryManager(self.env)
-
         q = req.args.get('q')
         dirname, prefix = posixpath.split(q)
         prefix = prefix.lower()
-        reponame, repos, path = rm.get_repository_by_path(dirname)
 
         def kind_order(entry):
             return (not entry['id'], embedded_numbers(entry['id']))
 
-        repo_entries = {'text': _('Suggestions'),
-                        'children': [],
-                        }
+
         bm_entries = {'text': _('Favorites'),
                       'children': [],
                       }
@@ -40,7 +35,9 @@ class FavoritesAndSuggestionPathSearch(Component):
 
         # if no query then we only need to return the favorites.
         if not q:
-            bm_entries['children'].extend({'id': bm.path, 'text': bm.path, 'is_favorite' : True}
+            bm_entries['children'].extend({'id': bm.path,
+                                           'text': bm.path,
+                                           'is_favorite': True}
                                       for bm in VCSFavorite.select_all(self.env))
             bm_entries['children'] = sorted(bm_entries['children'], key=kind_order)
             result.append(bm_entries)
@@ -48,21 +45,7 @@ class FavoritesAndSuggestionPathSearch(Component):
             req.send(json,'text/json')
             return
 
-        if repos:
-            try:
-                repo_entries['children'].extend({'id': '/' + pathjoin(repos.reponame, e.path),
-                                                 'text': '/' + pathjoin(repos.reponame, e.path),
-                                                 'is_favorite': False}
-                                                for e in repos.get_node(path).get_entries()
-                                                    if e.can_view(req.perm) and
-                                                        e.name.lower().startswith(prefix) and
-                                                        e.isdir)
-                if q.endswith('/'):
-                    repo_entries['children'].append({'id': q,
-                                                     'text': q,
-                                                     'is_favorite': False})
-            except NoSuchNode:
-                pass
+        repo_entries = self._get_vcs_folders(req, q, dirname, prefix)
 
         bm_entries['children'].extend({'id': bm.path,
                                        'text': bm.path,
@@ -73,7 +56,7 @@ class FavoritesAndSuggestionPathSearch(Component):
             for r_entry in repo_entries['children']:
                 if r_entry['text'] == b_entry['text'] or r_entry['text'] == (b_entry['text'] + '/'):
                     r_entry['is_favorite'] = True
-                    break;
+                    break
 
         bm_entries['children'] = sorted(bm_entries['children'], key=kind_order)
         repo_entries['children'] = sorted(repo_entries['children'], key=kind_order)
@@ -83,6 +66,32 @@ class FavoritesAndSuggestionPathSearch(Component):
             result.append(repo_entries)
         json = to_json(result)
         req.send(json,'text/json')
+
+    def _get_vcs_folders(self,req,q,dirname,prefix):
+        rm = RepositoryManager(self.env)
+
+        reponame, repos, path = rm.get_repository_by_path(dirname)
+        repo_entries = {'text': _('Suggestions'),
+                        'children': [],
+                        }
+        if repos:
+            try:
+                entries = ({'id': '/' + pathjoin(repos.reponame, e.path),
+                           'text': '/' + pathjoin(repos.reponame, e.path),
+                           'is_favorite': False}
+                            for e in repos.get_node(path).get_entries()
+                                if e.can_view(req.perm) and
+                                    e.name.lower().startswith(prefix) and
+                                    e.isdir)
+                repo_entries['children'].extend(entries)
+
+                if q.endswith('/'):
+                    repo_entries['children'].append({'id': q,
+                                                     'text': q,
+                                                     'is_favorite': False})
+            except NoSuchNode:
+                pass
+        return repo_entries
 
 class AddFavorite(Component):
     implements(IRequestHandler)
