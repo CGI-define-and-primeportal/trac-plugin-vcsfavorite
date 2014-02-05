@@ -2,7 +2,6 @@ from trac.core import TracError, Component, implements
 from trac.env import IEnvironmentSetupParticipant
 from trac.db.api import DatabaseManager, with_transaction
 from vcsfavoriteplugin import db_default
-import importlib
 
 class VCSFavoriteDBManager(Component):
     implements(IEnvironmentSetupParticipant)
@@ -79,9 +78,11 @@ class VCSFavoriteDBManager(Component):
         for i in range(self.found_db_version+1, db_default.version+1):
             name = 'db%i' % i
             try:
-                script = importlib.import_module('.' + name, 'vcsfavoriteplugin.upgrades')
-            except ImportError:
-                raise TracError('No upgrade module for %s version %i' % (db_default.name, i))
+                upgrades = __import__('upgrades', globals(), locals(), [name])
+                script = getattr(upgrades, name)
+            except AttributeError:
+                raise TracError('No upgrade module for %s version %i',
+                                db_default.name, i)
 
             script.do_upgrade(self.env, i, cursor)
             cursor.execute('UPDATE system SET value=%s WHERE name=%s',
@@ -113,7 +114,6 @@ class VCSFavorite(object):
 
     def insert(self):
         self._validate_options()
-        #paths is only stored with out trailing /
         @self.env.with_transaction()
         def _do_insert(db):
             cursor = db.cursor()
