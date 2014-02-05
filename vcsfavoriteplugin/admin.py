@@ -6,6 +6,7 @@ from trac.web.chrome import add_script
 from vcsfavoriteplugin.model import VCSFavorite
 from trac.web.chrome import add_notice
 from trac.perm import PermissionError
+from pkg_resources import resource_filename
 
 class VCSFavoriteAdmin(Component):
 
@@ -14,11 +15,9 @@ class VCSFavoriteAdmin(Component):
 
     # ITemplateProvider methods
     def get_templates_dirs(self):
-        from pkg_resources import resource_filename
         return [resource_filename(__name__, 'templates')]
 
     def get_htdocs_dirs(self):
-        from pkg_resources import resource_filename
         return [('vcsfavoriteplugin', resource_filename(__name__, 'htdocs'))]
 
     #IAdminPanelProvider
@@ -30,17 +29,17 @@ class VCSFavoriteAdmin(Component):
         if req.authname != owner and not req.perm.has_permission('TRAC_ADMIN'):
             raise PermissionError(msg='You are not a trac admin or the owner of this favorite')
 
-    def render_admin_panel(self, req, cat, page, url_favorite_id):
+    def render_admin_panel(self, req, cat, page, path_info):
 
         edit = False
         selected_favorite = None
 
         #If it specifies favorite id it is in edit mode.
-        if url_favorite_id:
+        if path_info:
             try:
-                favorite_id = int(url_favorite_id)
+                favorite_id = int(path_info)
             except Exception:
-                raise TracError('No favorite with that id found.')
+                raise TracError('Malformed url. Favorite id not a number.')
 
             edit = True
             if req.perm.has_permission('TRAC_ADMIN'):
@@ -68,20 +67,18 @@ class VCSFavoriteAdmin(Component):
                         raise TracError(_('Internal error'))
 
                 VCSFavorite.remove_list_by_id(sel, self.env)
-                add_notice(req, _('The selected favorite have been '
+                add_notice(req, _('The selected favorite has been '
                                   'removed.'))
                 req.redirect(req.href.admin(cat, page))
             elif req.args.get('add'):
                 req.perm.require('TRAC_ADMIN')
                 path = req.args.get('favorite_path')
                 desc = req.args.get('description')
-                if req.args.get('add'):
-                    favorite = VCSFavorite(self.env, path=path, description=desc, owner=req.authname)
-                    favorite.insert()
-                    add_notice(req, _('Favorite created.'))
+                favorite = VCSFavorite(self.env, path=path, description=desc, owner=req.authname)
+                favorite.insert()
+                add_notice(req, _('Favorite created.'))
 
             elif req.args.get('edit'):
-                req.perm.require('TRAC_ADMIN')
                 self.is_authorized(req, selected_favorite.owner)
                 selected_favorite.path = req.args.get('favorite_path')
                 selected_favorite.description = req.args.get('description')

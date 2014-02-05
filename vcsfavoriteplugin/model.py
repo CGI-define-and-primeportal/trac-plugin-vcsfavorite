@@ -1,6 +1,5 @@
 from trac.core import TracError, Component, implements
 from trac.env import IEnvironmentSetupParticipant
-from trac.db.schema import Table, Column, Index
 from trac.db.api import DatabaseManager, with_transaction
 from vcsfavoriteplugin import db_default
 import importlib
@@ -75,7 +74,7 @@ class VCSFavoriteDBManager(Component):
         self._create_non_existing_tabels()
 
         cursor = db.cursor()
-        
+
         #Run all update from old version to current version
         for i in range(self.found_db_version+1, db_default.version+1):
             name = 'db%i' % i
@@ -101,7 +100,6 @@ class VCSFavorite(object):
 
     def __init__(self, env, db_row=None, path='', owner='',
                  _id=None, description=u'', published=0):
-
         self.env = env
 
         if db_row:
@@ -125,16 +123,16 @@ class VCSFavorite(object):
         def _do_insert(db):
             cursor = db.cursor()
             try:
-                cursor.execute('INSERT INTO ' + VCSFavoriteDBManager._schema_name
+                cursor.execute('INSERT INTO vcs_favorites'
                                + ' (path, owner, description, published)'
                                + ' VALUES (%s, %s, %s, %s)',
                                (self.path,self.owner,self.description,self.published))
-            except Exception, e:
+            except IntegrityError, e:
                 if isinstance(e, "IntegrityError"):
                     raise TracError('Path "%s" already exists' % self.path)
                 else:
                     raise e
-            self._id = db.get_last_id(cursor, VCSFavoriteDBManager._schema_name )
+            self._id = db.get_last_id(cursor, 'vcs_favorites')
 
     def update(self):
         self._validate_options()
@@ -142,7 +140,7 @@ class VCSFavorite(object):
         @with_transaction(self.env)
         def _do_update(db):
             cursor = db.cursor()
-            cursor.execute('UPDATE ' + VCSFavoriteDBManager._schema_name
+            cursor.execute('UPDATE vcs_favorites'
                            + ' SET path=%s, owner=%s, description=%s, published=%s'
                            + ' WHERE id = %s',
                             (self.path, self.owner, self.description, self.published,
@@ -161,11 +159,11 @@ class VCSFavorite(object):
         db = env.get_read_db()
         cursor = db.cursor()
         if owner:
-            cursor.execute('SELECT id, path, owner, description, published FROM '
-                           + VCSFavoriteDBManager._schema_name + ' WHERE id = %s AND owner=%s OR published=1', (int_id,owner))
+            cursor.execute('SELECT id, path, owner, description, published FROM vcs_favorites'
+                           + ' WHERE id = %s AND owner=%s OR published=1', (int_id,owner))
         else:
-            cursor.execute('SELECT id, path, owner,  description, published FROM '
-                           + VCSFavoriteDBManager._schema_name + ' WHERE id = %s', (int_id,))
+            cursor.execute('SELECT id, path, owner,  description, published FROM vcs_favorites'
+                           + ' WHERE id = %s', (int_id,))
         row = cursor.fetchone()
         if row:
             return VCSFavorite(env, db_row=row)
@@ -177,21 +175,7 @@ class VCSFavorite(object):
         favorites = []
         db = env.get_read_db()
         cursor = db.cursor()
-        cursor.execute('SELECT id, path, owner, description, published FROM '
-                       + VCSFavoriteDBManager._schema_name)
-
-        for row in cursor:
-            favorites.append(VCSFavorite(env, db_row=row))
-
-        return favorites
-
-    @classmethod
-    def select_all_owned_by(cls, env, owner):
-        favorites = []
-        db = env.get_read_db()
-        cursor = db.cursor()
-        cursor.execute('SELECT id, path, owner, description, published FROM '
-                       + VCSFavoriteDBManager._schema_name + ' WHERE owner= %s', (owner,))
+        cursor.execute('SELECT id, path, owner, description, published FROM vcs_favorites')
 
         for row in cursor:
             favorites.append(VCSFavorite(env, db_row=row))
@@ -204,7 +188,7 @@ class VCSFavorite(object):
         db = env.get_read_db()
         cursor = db.cursor()
         cursor.execute('SELECT id, path, owner, description, published'
-                       + ' FROM ' + VCSFavoriteDBManager._schema_name
+                       + ' FROM vcs_favorites'
                        + ' WHERE owner= %s OR published=1', (user,))
 
         for row in cursor:
@@ -218,14 +202,14 @@ class VCSFavorite(object):
         db = env.get_read_db()
         cursor = db.cursor()
         cursor.execute(('SELECT id, path, owner, description, published'
-                        + ' FROM ' + VCSFavoriteDBManager._schema_name
+                        + ' FROM vcs_favorites'
                         + ' WHERE ( path ' + db.like()
                         + ' OR path ' + db.like()
                         + ' OR path ' + db.like()
                         + ' )')
                        , (db.like_escape(starts_with) + '%',
                           db.like_escape(starts_with + '/') + '%',
-                          db.like_escape(starts_with[:-1] if starts_with[-1:] == '/' else starts_with) + '%',
+                          db.like_escape(starts_with[:-1] if starts_with.endswith('/') else starts_with) + '%',
                           )
                        )
         for row in cursor:
@@ -237,12 +221,11 @@ class VCSFavorite(object):
     def remove_one_by_path(cls, path, env):
         rowcount = 0
         #paths is only stored with out trailing /
-        path = path[:-1] if path[-1:] == '/' else path
+        path = path[:-1] if path.endswith('/') else path
         @with_transaction(env)
         def _do_remove_one(db):
             cursor = db.cursor()
-            cursor.execute('DELETE FROM ' + VCSFavoriteDBManager._schema_name
-                           + ' WHERE path = %s', (path,))
+            cursor.execute('DELETE FROM vcs_favorites WHERE path = %s', (path,))
             rowcount = cursor.rowcount
         return rowcount
 
@@ -257,8 +240,7 @@ class VCSFavorite(object):
         @with_transaction(env)
         def _do_remove_one(db):
             cursor = db.cursor()
-            cursor.execute('DELETE FROM ' + VCSFavoriteDBManager._schema_name
-                           + ' WHERE id = %s', (_id,))
+            cursor.execute('DELETE FROM vcs_favorites WHERE id = %s', (_id,))
             rowcount = cursor.rowcount
         return rowcount
 
@@ -268,10 +250,8 @@ class VCSFavorite(object):
         Removes a list of id from favorites.
         """
         nr_rows = 0
-        @with_transaction(env)
-        def _do_remove_list(db):
-            for _id in favorites:
-                nr_rows += cls.remove_one_by_id(_id, env)
+        for _id in favorites:
+            nr_rows += cls.remove_one_by_id(_id, env)
         return nr_rows
 
     @classmethod
@@ -280,8 +260,6 @@ class VCSFavorite(object):
         Removes a list of paths from favorites.
         """
         nr_rows = 0
-        @with_transaction(env)
-        def _do_remove_list(db):
-            for path in favorites:
-                nr_rows =+ cls.remove_one_by_path(path, env)
+        for path in favorites:
+            nr_rows =+ cls.remove_one_by_path(path, env)
         return nr_rows
