@@ -2,69 +2,99 @@ from trac.core import TracError, Component, implements
 from trac.env import IEnvironmentSetupParticipant
 from trac.db.schema import Table, Column, Index
 from trac.db.api import DatabaseManager, with_transaction
+from vcsfavoriteplugin import db_default
+import importlib
 
 class VCSFavoriteDBManager(Component):
     implements(IEnvironmentSetupParticipant)
 
-    _schema_name = 'vcs_favorites'
-    _schemas = [Table(_schema_name, key='id')[Column('id', auto_increment=True),
-                                         Column('path', 'text'),
-                                         Column('owner', 'text'),
-                                         Column('description', 'text'),
-                                         Column('published', 'int'),
-                                         Index(['path'], unique=True)],]
-
-    #IEnvironmentSetupParticipant
+    # IEnvironmentSetupParticipant methods
     def environment_created(self):
-        """Called when a new Trac environment is created."""
-        self.upgrade_environment(self.env.get_db_cnx())
+        @self.env.with_transaction()
+        def do_db_create(db):
+            cursor = db.cursor()
+            for table in db_default.schemas:
+                self._create_table(cursor, table)
+            self._create_or_update_table_version(db_default.name,
+                                                 db_default.version
+                                                 )
 
-    def environment_needs_upgrade(self, db):
-        """Called when Trac checks whether the environment needs to be upgraded.
-
-        Should return `True` if this participant needs an upgrade to be
-        performed, `False` otherwise.
-        """
-        release_tables = [VCSFavoriteDBManager._schema_name,]
-        self.env.log.debug("Checking if table %s have to be upgraded" % str(release_tables))
-
-        try:
-            @self.env.with_transaction()
-            def check(db):
+    def _create_or_update_table_version(self,schema_name,version):
+        @self.env.with_transaction()
+        def do_db_create_or_update(db):
+            try:
                 cursor = db.cursor()
-                for table_name in release_tables:
-                    sql = 'SELECT * FROM %s' % table_name
+                cursor.execute('INSERT INTO system (name, value) VALUES (%s, %s)',
+                               (db_default.name, db_default.version))
+            except Exception:
+                cursor = db.cursor()
+                cursor.execute('UPDATE system SET value=%s WHERE name=%s',
+                               (db_default.version, db_default.name))
+
+    def _create_table(self,cursor,table):
+        db_manager, _ = DatabaseManager(self.env)._get_connector()
+        for sql in db_manager.to_sql(table):
+            self.log.debug('Creating table %s ...' % table.name)
+            cursor.execute(sql)
+
+    def _create_non_existing_tabels(self):
+        @self.env.with_transaction()
+        def check(db):
+            cursor = db.cursor()
+            for table in db_default.schemas:
+                try:
+                    sql = 'SELECT * FROM %s' % table.name
                     cursor.execute(sql)
                     cursor.fetchone()
-        except Exception:
-            self.log.debug('Upgrade of schema needed for VCS Favorites '
-                           'plugin', exc_info=True)
-            return True
+                except Exception:
+                    self.log.debug('No table found with name %s' % table.name)
+                    self._create_table(cursor, table)
+                    return
 
-        return False
+    def environment_needs_upgrade(self, db):
+        cursor = db.cursor()
+        cursor.execute('SELECT value FROM system WHERE name=%s',
+                       (db_default.name,))
+        value = cursor.fetchone()
+
+        if not value:
+            self.found_db_version = 0
+        else:
+            self.found_db_version = int(value[0])
+
+        if self.found_db_version < db_default.version:
+            return True
+        elif self.found_db_version > db_default.version:
+            raise TracError('Database newer than %s version', db_default.name)
+        else:
+            return False
 
     def upgrade_environment(self, db):
-        """Actually perform an environment upgrade.
 
-        Implementations of this method don't need to commit any database
-        transactions. This is done implicitly for each participant
-        if the upgrade succeeds without an error being raised.
+        #Create all non existing tables in the schema.
+        self._create_non_existing_tabels()
 
-        However, if the `upgrade_environment` consists of small, restartable,
-        steps of upgrade, it can decide to commit on its own after each
-        successful step.
-        """
-        self.log.debug('Upgrading schema for VCS Favorites')
-        connector = DatabaseManager(self.env).get_connector()[0]
         cursor = db.cursor()
+        
+        #Run all update from old version to current version
+        for i in range(self.found_db_version+1, db_default.version+1):
+            name = 'db%i' % i
+            try:
+                script = importlib.import_module('.' + name, 'vcsfavoriteplugin.upgrades')
+            except ImportError:
+                raise TracError('No upgrade module for %s version %i' % (db_default.name, i))
 
-        for table in self._schemas:
-            for stmt in connector.to_sql(table):
-                self.log.debug(stmt)
-                try:
-                    cursor.execute(stmt)
-                except Exception, ex:
-                    self.log.error('%s', ex)
+            script.do_upgrade(self.env, i, cursor)
+            cursor.execute('UPDATE system SET value=%s WHERE name=%s',
+                           (db_default.version, db_default.name))
+
+        self._create_or_update_table_version(db_default.name,
+                                     db_default.version
+                                     )
+        db.commit()
+        self.log.debug('Upgraded %s database version from %d to %d',
+                      db_default.name, i-1, i)
+
 
 
 class VCSFavorite(object):

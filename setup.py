@@ -37,7 +37,8 @@ setup(
     description = 'Version control system favorites.',
     license = \
     """Copyright (c) 2013, CGI. All rights reserved. Released under the 3-clause BSD license. """,
-    packages = ['vcsfavoriteplugin'],
+    packages = ['vcsfavoriteplugin',
+                'vcsfavoriteplugin.upgrades'],
     package_data = {'vcsfavoriteplugin': [
         'templates/*.html',
         'htdocs/js/*.js',
