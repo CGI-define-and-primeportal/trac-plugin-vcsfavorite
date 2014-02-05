@@ -96,7 +96,7 @@ class AddFavorite(Component):
         if not req.get_header('X-Requested-With') == 'XMLHttpRequest':
             raise TracError('This resource works only with header X-Requested-With:XMLHttpRequest')
         path = unicode(req.args.get('path'))
-        favorite = VCSFavorite(self.env, path=path, owner=req.authname)
+        favorite = VCSFavorite(self.env, path=path)
         favorite.insert()
         req.send('','text/plain')
 

@@ -47,14 +47,13 @@
 		        <thead>
 					<tr>
 					  <th class="sel" py:if="'TRAC_ADMIN' in req.perm">&nbsp;</th>
-					  <th>Path</th><th>owner</th><th>Description</th>
+					  <th>Path</th><th>Description</th>
 					</tr>
 				</thead>
 		        <tbody>
 				<tr py:for="i, favorite in enumerate(vcs_favorites)" class="${i % 2 == 0 and 'even' or 'odd'}">
 				    <td class="sel" py:if="'TRAC_ADMIN' in req.perm"><input type="checkbox" class="selcheckbox" name="del_sel" value="$favorite._id"/></td>
 					<td><a href="${href.admin('versioncontrol','favorites',favorite._id)}">$favorite.path</a></td>
-					<td>$favorite.owner</td>
 					<td>$favorite.description</td>
 				</tr>
 		    	</tbody>

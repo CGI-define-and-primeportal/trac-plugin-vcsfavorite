@@ -86,11 +86,10 @@ class VCSFavoriteDBManager(Component):
             script.do_upgrade(self.env, i, cursor)
             cursor.execute('UPDATE system SET value=%s WHERE name=%s',
                            (db_default.version, db_default.name))
-
+        db.commit()
         self._create_or_update_table_version(db_default.name,
                                      db_default.version
                                      )
-        db.commit()
         self.log.debug('Upgraded %s database version from %d to %d',
                       db_default.name, i-1, i)
 
@@ -98,19 +97,15 @@ class VCSFavoriteDBManager(Component):
 
 class VCSFavorite(object):
 
-    def __init__(self, env, db_row=None, path='', owner='',
-                 _id=None, description=u'', published=0):
+    def __init__(self, env, db_row=None, path='', _id=None, description=u''):
         self.env = env
 
         if db_row:
-            self._id, self.path, self.owner, \
-            self.description, self.published = db_row
+            self._id, self.path, self.description, = db_row
         else:
             self._id = _id
             self.path = path
             self.description = description
-            self.owner = owner
-            self.published = published
 
     def _validate_options(self):
         if not self.path:
@@ -124,10 +119,10 @@ class VCSFavorite(object):
             cursor = db.cursor()
             try:
                 cursor.execute('INSERT INTO vcs_favorites'
-                               + ' (path, owner, description, published)'
-                               + ' VALUES (%s, %s, %s, %s)',
-                               (self.path,self.owner,self.description,self.published))
-            except IntegrityError, e:
+                               + ' (path, description)'
+                               + ' VALUES (%s, %s)',
+                               (self.path, self.description))
+            except Exception, e:
                 if isinstance(e, "IntegrityError"):
                     raise TracError('Path "%s" already exists' % self.path)
                 else:
@@ -141,16 +136,15 @@ class VCSFavorite(object):
         def _do_update(db):
             cursor = db.cursor()
             cursor.execute('UPDATE vcs_favorites'
-                           + ' SET path=%s, owner=%s, description=%s, published=%s'
+                           + ' SET path=%s, description=%s'
                            + ' WHERE id = %s',
-                            (self.path, self.owner, self.description, self.published,
-                            self._id))
+                            (self.path, self.description, self._id))
             rowcount = cursor.rowcount
 
         return rowcount
 
     @classmethod
-    def select_one(cls, _id, env, owner=None):
+    def select_one(cls, _id, env):
         """ Fetches a VCSFavorite from db """
         try:
             int_id = int(_id)
@@ -158,11 +152,7 @@ class VCSFavorite(object):
             env.log.error("%s is not an integer. Potential Sql injection atempt" % _id)
         db = env.get_read_db()
         cursor = db.cursor()
-        if owner:
-            cursor.execute('SELECT id, path, owner, description, published FROM vcs_favorites'
-                           + ' WHERE id = %s AND owner=%s OR published=1', (int_id,owner))
-        else:
-            cursor.execute('SELECT id, path, owner,  description, published FROM vcs_favorites'
+        cursor.execute('SELECT id, path, description FROM vcs_favorites'
                            + ' WHERE id = %s', (int_id,))
         row = cursor.fetchone()
         if row:
@@ -175,21 +165,7 @@ class VCSFavorite(object):
         favorites = []
         db = env.get_read_db()
         cursor = db.cursor()
-        cursor.execute('SELECT id, path, owner, description, published FROM vcs_favorites')
-
-        for row in cursor:
-            favorites.append(VCSFavorite(env, db_row=row))
-
-        return favorites
-
-    @classmethod
-    def select_all_user_viewable(cls, env, user=None):
-        favorites = []
-        db = env.get_read_db()
-        cursor = db.cursor()
-        cursor.execute('SELECT id, path, owner, description, published'
-                       + ' FROM vcs_favorites'
-                       + ' WHERE owner= %s OR published=1', (user,))
+        cursor.execute('SELECT id, path, description FROM vcs_favorites')
 
         for row in cursor:
             favorites.append(VCSFavorite(env, db_row=row))
@@ -201,7 +177,7 @@ class VCSFavorite(object):
         favorites = []
         db = env.get_read_db()
         cursor = db.cursor()
-        cursor.execute(('SELECT id, path, owner, description, published'
+        cursor.execute(('SELECT id, path, description'
                         + ' FROM vcs_favorites'
                         + ' WHERE ( path ' + db.like()
                         + ' OR path ' + db.like()
@@ -252,14 +228,4 @@ class VCSFavorite(object):
         nr_rows = 0
         for _id in favorites:
             nr_rows += cls.remove_one_by_id(_id, env)
-        return nr_rows
-
-    @classmethod
-    def remove_list_by_path(cls, favorites, env):
-        """
-        Removes a list of paths from favorites.
-        """
-        nr_rows = 0
-        for path in favorites:
-            nr_rows =+ cls.remove_one_by_path(path, env)
         return nr_rows

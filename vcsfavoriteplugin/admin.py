@@ -5,7 +5,6 @@ from trac.util.translation import _
 from trac.web.chrome import add_script
 from vcsfavoriteplugin.model import VCSFavorite
 from trac.web.chrome import add_notice
-from trac.perm import PermissionError
 from pkg_resources import resource_filename
 
 class VCSFavoriteAdmin(Component):
@@ -25,10 +24,6 @@ class VCSFavoriteAdmin(Component):
         if 'REPOSITORY_ADMIN' in req.perm:
             yield ('versioncontrol', _("Version Control"),'favorites',_("Favorites"))
 
-    def is_authorized(self, req ,owner):
-        if req.authname != owner and not req.perm.has_permission('TRAC_ADMIN'):
-            raise PermissionError(msg='You are not a trac admin or the owner of this favorite')
-
     def render_admin_panel(self, req, cat, page, path_info):
 
         edit = False
@@ -42,10 +37,7 @@ class VCSFavoriteAdmin(Component):
                 raise TracError('Malformed url. Favorite id not a number.')
 
             edit = True
-            if req.perm.has_permission('TRAC_ADMIN'):
-                selected_favorite = VCSFavorite.select_one(favorite_id, self.env)
-            else:
-                selected_favorite = VCSFavorite.select_one(favorite_id, self.env,owner=req.authname)
+            selected_favorite = VCSFavorite.select_one(favorite_id, self.env)
             if not selected_favorite:
                 raise TracError('No favorite with that id found.')
 
@@ -74,12 +66,12 @@ class VCSFavoriteAdmin(Component):
                 req.perm.require('TRAC_ADMIN')
                 path = req.args.get('favorite_path')
                 desc = req.args.get('description')
-                favorite = VCSFavorite(self.env, path=path, description=desc, owner=req.authname)
+                favorite = VCSFavorite(self.env, path=path, description=desc)
                 favorite.insert()
                 add_notice(req, _('Favorite created.'))
 
             elif req.args.get('edit'):
-                self.is_authorized(req, selected_favorite.owner)
+                req.perm.require('TRAC_ADMIN')
                 selected_favorite.path = req.args.get('favorite_path')
                 selected_favorite.description = req.args.get('description')
                 selected_favorite.update()
@@ -90,10 +82,7 @@ class VCSFavoriteAdmin(Component):
                 req.redirect(req.href.admin(cat, page))
 
         #Prepare data
-        if req.perm.has_permission('TRAC_ADMIN'):
-            vcs_favorites = VCSFavorite.select_all(self.env)
-        else:
-            vcs_favorites = VCSFavorite.select_all_user_viewable(self.env,user=req.authname)
+        vcs_favorites = VCSFavorite.select_all(self.env)
         trac_base_url = req.href() + "/" if req.href() != "/" else "/"
         add_script_data(req, {'tracBaseUrl': trac_base_url})
         add_script(req,'vcsfavoriteplugin/js/vcs_favorite_admin.js')
