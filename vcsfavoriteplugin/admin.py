@@ -27,7 +27,6 @@ class VCSFavoriteAdmin(Component):
             yield ('versioncontrol', _("Version Control"),'favorites',_("Favorites"))
 
     def is_authorized(self, req ,owner):
-        self.env.log.info("%s" % req.perm.has_permission('TRAC_ADMIN'))
         if req.authname != owner and not req.perm.has_permission('TRAC_ADMIN'):
             raise PermissionError(msg='You are not a trac admin or the owner of this favorite')
 
@@ -56,7 +55,6 @@ class VCSFavoriteAdmin(Component):
             if req.args.get('remove'):
                 req.perm.require('TRAC_ADMIN')
                 sel = req.args.get('del_sel')
-                self.env.log.info("%s selected" % sel)
                 if not sel:
                     raise TracError(_('No favorites selected'))
                 if not isinstance(sel, list):
@@ -100,10 +98,10 @@ class VCSFavoriteAdmin(Component):
         else:
             vcs_favorites = VCSFavorite.select_all_user_viewable(self.env,user=req.authname)
         trac_base_url = req.href() + "/" if req.href() != "/" else "/"
-        add_script_data(req, {'tracBaseUrl' : trac_base_url})
+        add_script_data(req, {'tracBaseUrl': trac_base_url})
         add_script(req,'vcsfavoriteplugin/js/vcs_favorite_admin.js')
         add_script(req,'vcsfavoriteplugin/js/jquery-ui.js')
         return ('vcs_favorite_admin.html',
-                 {'vcs_favorites':vcs_favorites,
-                  'edit':edit,
-                  'favorite':selected_favorite,})
+                 {'vcs_favorites': vcs_favorites,
+                  'edit': edit,
+                  'favorite': selected_favorite,})

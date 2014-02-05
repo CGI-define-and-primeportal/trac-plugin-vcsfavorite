@@ -5,7 +5,6 @@ import posixpath
 from trac.util.presentation import to_json
 from trac.util import embedded_numbers, pathjoin
 from vcsfavoriteplugin.model import VCSFavorite
-from trac.web.chrome import add_notice
 from trac.util.translation import _
 
 class FavoritesAndSuggestionPathSearch(Component):
@@ -31,17 +30,17 @@ class FavoritesAndSuggestionPathSearch(Component):
         def kind_order(entry):
             return (not entry['id'], embedded_numbers(entry['id']))
 
-        repo_entries = {'text' : _('Suggestions'),
-                        'children' : [],
+        repo_entries = {'text': _('Suggestions'),
+                        'children': [],
                         }
-        bm_entries = {'text' : _('Favorites'),
-                      'children' : [],
+        bm_entries = {'text': _('Favorites'),
+                      'children': [],
                       }
         result = []
 
         # if no query then we only need to return the favorites.
         if not q:
-            bm_entries['children'].extend({'id' : bm.path, 'text' : bm.path, 'is_favorite' : True}
+            bm_entries['children'].extend({'id': bm.path, 'text': bm.path, 'is_favorite' : True}
                                       for bm in VCSFavorite.select_all(self.env))
             bm_entries['children'] = sorted(bm_entries['children'], key=kind_order)
             result.append(bm_entries)
@@ -51,23 +50,23 @@ class FavoritesAndSuggestionPathSearch(Component):
 
         if repos:
             try:
-                repo_entries['children'].extend({'id' : '/' + pathjoin(repos.reponame, e.path),
-                                                 'text' : '/' + pathjoin(repos.reponame, e.path),
-                                                 'is_favorite' : False}
+                repo_entries['children'].extend({'id': '/' + pathjoin(repos.reponame, e.path),
+                                                 'text': '/' + pathjoin(repos.reponame, e.path),
+                                                 'is_favorite': False}
                                                 for e in repos.get_node(path).get_entries()
                                                     if e.can_view(req.perm) and
                                                         e.name.lower().startswith(prefix) and
                                                         e.isdir)
                 if q.endswith('/'):
-                    repo_entries['children'].append({'id' : q,
-                                                     'text' : q,
-                                                     'is_favorite' : False})
+                    repo_entries['children'].append({'id': q,
+                                                     'text': q,
+                                                     'is_favorite': False})
             except NoSuchNode:
                 pass
 
-        bm_entries['children'].extend({'id' : bm.path,
-                                       'text' : bm.path,
-                                       'is_favorite' : True}
+        bm_entries['children'].extend({'id': bm.path,
+                                       'text': bm.path,
+                                       'is_favorite': True}
                                       for bm in VCSFavorite.select_all_path_begins_with(self.env, q))
 
         for b_entry in bm_entries['children']:
@@ -84,7 +83,6 @@ class FavoritesAndSuggestionPathSearch(Component):
             result.append(repo_entries)
         json = to_json(result)
         req.send(json,'text/json')
-        return
 
 class AddFavorite(Component):
     implements(IRequestHandler)
@@ -101,7 +99,7 @@ class AddFavorite(Component):
         favorite = VCSFavorite(self.env, path=path, owner=req.authname)
         favorite.insert()
         req.send('','text/plain')
-        return
+
 class RemoveFavorite(Component):
     implements(IRequestHandler)
 
@@ -116,4 +114,3 @@ class RemoveFavorite(Component):
         path = unicode(req.args.get('path'))
         VCSFavorite.remove_one_by_path(path, self.env)
         req.send('','text/plain')
-        return

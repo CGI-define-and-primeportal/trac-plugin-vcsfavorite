@@ -2,7 +2,6 @@ from trac.core import TracError, Component, implements
 from trac.env import IEnvironmentSetupParticipant
 from trac.db.schema import Table, Column, Index
 from trac.db.api import DatabaseManager, with_transaction
-from trac.web.chrome import add_warning
 
 class VCSFavoriteDBManager(Component):
     implements(IEnvironmentSetupParticipant)
@@ -27,7 +26,7 @@ class VCSFavoriteDBManager(Component):
         performed, `False` otherwise.
         """
         release_tables = [VCSFavoriteDBManager._schema_name,]
-        self.env.log.info("Checking if table %s have to be upgraded" % str(release_tables))
+        self.env.log.debug("Checking if table %s have to be upgraded" % str(release_tables))
 
         try:
             @self.env.with_transaction()
@@ -55,7 +54,7 @@ class VCSFavoriteDBManager(Component):
         steps of upgrade, it can decide to commit on its own after each
         successful step.
         """
-        self.log.debug('Upgrading schema for ReleaseManagement plugin')
+        self.log.debug('Upgrading schema for VCS Favorites')
         connector = DatabaseManager(self.env).get_connector()[0]
         cursor = db.cursor()
 
@@ -101,7 +100,7 @@ class VCSFavorite(object):
                                + ' VALUES (%s, %s, %s, %s)',
                                (self.path,self.owner,self.description,self.published))
             except Exception, e:
-                if e.__class__.__name__ == "IntegrityError":
+                if isinstance(e, "IntegrityError"):
                     raise TracError('Path "%s" already exists' % self.path)
                 else:
                     raise e
@@ -222,7 +221,8 @@ class VCSFavorite(object):
         try:
             int_id = int(_id)
         except ValueError:
-            env.log.error("%s is not an integer. Potential Sql injection atempt" % _id)
+            env.log.error("%s is not an integer. Potential Sql injection attempt" % _id)
+            raise TracError("%s is not an integer. Potential Sql injection atempt" % _id)
         rowcount = 0
         @with_transaction(env)
         def _do_remove_one(db):
@@ -241,7 +241,7 @@ class VCSFavorite(object):
         @with_transaction(env)
         def _do_remove_list(db):
             for _id in favorites:
-                nr_rows =+ cls.remove_one_by_id(_id, env)
+                nr_rows += cls.remove_one_by_id(_id, env)
         return nr_rows
 
     @classmethod
