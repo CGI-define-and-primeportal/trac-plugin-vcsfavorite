@@ -7,10 +7,10 @@ from vcsfavoriteplugin.model import VCSFavorite
 from trac.web.chrome import add_notice
 from pkg_resources import resource_filename
 
+
 class VCSFavoriteAdmin(Component):
 
     implements(ITemplateProvider, IAdminPanelProvider)
-
 
     # ITemplateProvider methods
     def get_templates_dirs(self):
@@ -22,7 +22,7 @@ class VCSFavoriteAdmin(Component):
     #IAdminPanelProvider
     def get_admin_panels(self, req):
         if 'REPOSITORY_ADMIN' in req.perm:
-            yield ('versioncontrol', _("Version Control"),'favorites',_("Favorites"))
+            yield ('versioncontrol', _("Version Control"), 'favorites', _("Favorites"))
 
     def render_admin_panel(self, req, cat, page, path_info):
 
@@ -85,9 +85,11 @@ class VCSFavoriteAdmin(Component):
         vcs_favorites = VCSFavorite.select_all(self.env)
         trac_base_url = req.href() + "/" if req.href() != "/" else "/"
         add_script_data(req, {'tracBaseUrl': trac_base_url})
-        add_script(req,'vcsfavoriteplugin/js/vcs_favorite_admin.js')
-        add_script(req,'vcsfavoriteplugin/js/jquery-ui.js')
+        add_script(req, 'vcsfavoriteplugin/js/vcs_favorite_admin.js')
+        add_script(req, 'vcsfavoriteplugin/js/jquery-ui.js')
         return ('vcs_favorite_admin.html',
-                 {'vcs_favorites': vcs_favorites,
-                  'edit': edit,
-                  'favorite': selected_favorite,})
+                {'vcs_favorites': vcs_favorites,
+                 'edit': edit,
+                 'favorite': selected_favorite,
+                 }
+                )

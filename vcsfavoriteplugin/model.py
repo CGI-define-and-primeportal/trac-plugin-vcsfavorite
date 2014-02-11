@@ -3,6 +3,7 @@ from trac.env import IEnvironmentSetupParticipant
 from trac.db.api import DatabaseManager, with_transaction
 from vcsfavoriteplugin import db_default
 
+
 class VCSFavoriteDBManager(Component):
     implements(IEnvironmentSetupParticipant)
 
@@ -59,17 +60,18 @@ class VCSFavoriteDBManager(Component):
             cursor.execute('INSERT INTO system (name, value) VALUES (%s, %s)',
                            (db_default.name, 0))
 
-    def _update_table_version(self,schema_name,version):
+    def _update_table_version(self, schema_name, version):
         @self.env.with_transaction()
         def do_db_update(db):
             cursor = db.cursor()
             cursor.execute('UPDATE system SET value=%s WHERE name=%s',
-                           (version,schema_name))
+                           (version, schema_name))
 
-    def _create_table(self,cursor,table):
+    def _create_table(self, cursor, table):
         db_manager, _ = DatabaseManager(self.env)._get_connector()
         for sql in db_manager.to_sql(table):
             cursor.execute(sql)
+
 
 class VCSFavorite(object):
 
@@ -89,6 +91,7 @@ class VCSFavorite(object):
 
     def insert(self):
         self._validate_options()
+
         @self.env.with_transaction()
         def _do_insert(db):
             cursor = db.cursor()
@@ -107,13 +110,15 @@ class VCSFavorite(object):
     def update(self):
         self._validate_options()
         rowcount = 0
+
         @with_transaction(self.env)
         def _do_update(db):
             cursor = db.cursor()
             cursor.execute('UPDATE vcs_favorites'
                            + ' SET path=%s, description=%s'
                            + ' WHERE id = %s',
-                            (self.path, self.description, self._id))
+                           (self.path, self.description, self._id)
+                           )
             rowcount = cursor.rowcount
 
         return rowcount
@@ -128,7 +133,8 @@ class VCSFavorite(object):
         db = env.get_read_db()
         cursor = db.cursor()
         cursor.execute('SELECT id, path, description FROM vcs_favorites'
-                           + ' WHERE id = %s', (int_id,))
+                       + ' WHERE id = %s', (int_id,)
+                       )
         row = cursor.fetchone()
         if row:
             return VCSFavorite(env, db_row=row)
@@ -151,11 +157,11 @@ class VCSFavorite(object):
                         + ' WHERE ( path ' + db.like()
                         + ' OR path ' + db.like()
                         + ' OR path ' + db.like()
-                        + ' )')
-                       , (db.like_escape(starts_with) + '%',
-                          db.like_escape(starts_with + '/') + '%',
-                          db.like_escape(starts_with[:-1] if starts_with.endswith('/') else starts_with) + '%',
-                          )
+                        + ' )'
+                        ), (db.like_escape(starts_with) + '%',
+                            db.like_escape(starts_with + '/') + '%',
+                            db.like_escape(starts_with[:-1] if starts_with.endswith('/') else starts_with) + '%',
+                            )
                        )
         return [VCSFavorite(env, db_row=row) for row in cursor]
 
@@ -164,6 +170,7 @@ class VCSFavorite(object):
         rowcount = 0
         #paths is only stored with out trailing /
         path = path[:-1] if path.endswith('/') else path
+
         @with_transaction(env)
         def _do_remove_one(db):
             cursor = db.cursor()
@@ -178,6 +185,7 @@ class VCSFavorite(object):
         except ValueError:
             raise TracError("%s is not an integer.", (_id,))
         rowcount = 0
+
         @with_transaction(env)
         def _do_remove_one(db):
             cursor = db.cursor()

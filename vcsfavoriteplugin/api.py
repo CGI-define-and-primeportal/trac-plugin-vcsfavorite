@@ -7,6 +7,7 @@ from trac.util import embedded_numbers, pathjoin
 from vcsfavoriteplugin.model import VCSFavorite
 from trac.util.translation import _
 
+
 class FavoritesAndSuggestionPathSearch(Component):
 
     implements(IRequestHandler)
@@ -34,20 +35,22 @@ class FavoritesAndSuggestionPathSearch(Component):
         if not q:
             bm_entries['children'].extend({'id': bm.path,
                                            'text': bm.path,
-                                           'is_favorite': True}
-                                      for bm in VCSFavorite.select_all(self.env))
+                                           'is_favorite': True
+                                           } for bm in VCSFavorite.select_all(self.env)
+                                          )
             bm_entries['children'] = sorted(bm_entries['children'], key=kind_order)
             result.append(bm_entries)
             json = to_json(result)
-            req.send(json,'text/json')
+            req.send(json, 'text/json')
             return
 
         repo_entries = self._get_vcs_folders(req, q, dirname, prefix)
 
         bm_entries['children'].extend({'id': bm.path,
                                        'text': bm.path,
-                                       'is_favorite': True}
-                                      for bm in VCSFavorite.select_all_path_begins_with(self.env, q))
+                                       'is_favorite': True
+                                       } for bm in VCSFavorite.select_all_path_begins_with(self.env, q)
+                                      )
 
         for b_entry in bm_entries['children']:
             for r_entry in repo_entries['children']:
@@ -62,9 +65,9 @@ class FavoritesAndSuggestionPathSearch(Component):
         if repo_entries['children']:
             result.append(repo_entries)
         json = to_json(result)
-        req.send(json,'text/json')
+        req.send(json, 'text/json')
 
-    def _get_vcs_folders(self,req,q,dirname,prefix):
+    def _get_vcs_folders(self, req, q, dirname, prefix):
         rm = RepositoryManager(self.env)
 
         reponame, repos, path = rm.get_repository_by_path(dirname)
@@ -75,20 +78,25 @@ class FavoritesAndSuggestionPathSearch(Component):
             try:
                 entries = ({'id': '/' + pathjoin(repos.reponame, e.path),
                            'text': '/' + pathjoin(repos.reponame, e.path),
-                           'is_favorite': False}
-                            for e in repos.get_node(path).get_entries()
-                                if e.can_view(req.perm) and
-                                    e.name.lower().startswith(prefix) and
-                                    e.isdir)
+                           'is_favorite': False
+                            }
+                           for e in repos.get_node(path).get_entries()
+                           if e.can_view(req.perm)
+                           and e.name.lower().startswith(prefix)
+                           and e.isdir
+                           )
                 repo_entries['children'].extend(entries)
 
                 if q.endswith('/'):
                     repo_entries['children'].append({'id': q,
                                                      'text': q,
-                                                     'is_favorite': False})
+                                                     'is_favorite': False
+                                                     }
+                                                    )
             except NoSuchNode:
                 pass
         return repo_entries
+
 
 class AddFavorite(Component):
     implements(IRequestHandler)
@@ -102,7 +110,8 @@ class AddFavorite(Component):
         path = req.args.get('path')
         favorite = VCSFavorite(self.env, path=path)
         favorite.insert()
-        req.send('','text/plain')
+        req.send('', 'text/plain')
+
 
 class RemoveFavorite(Component):
     implements(IRequestHandler)
@@ -115,4 +124,4 @@ class RemoveFavorite(Component):
     def process_request(self, req):
         path = req.args.get('path')
         VCSFavorite.remove_one_by_path(path, self.env)
-        req.send('','text/plain')
+        req.send('', 'text/plain')

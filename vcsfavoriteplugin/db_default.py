@@ -5,6 +5,8 @@ __all__ = ['name', 'version', 'schemas']
 name = 'vcs_favorites'
 version = 1
 schemas = [Table('vcs_favorites', key='id')[Column('id', auto_increment=True),
-                                     Column('path', 'text'),
-                                     Column('description', 'text'),
-                                     Index(['path'], unique=True)],]
+                                            Column('path', 'text'),
+                                            Column('description', 'text'),
+                                            Index(['path'], unique=True)
+                                            ],
+           ]
