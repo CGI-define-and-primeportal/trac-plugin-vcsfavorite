@@ -162,19 +162,13 @@ class VCSFavorite(object):
 
     @classmethod
     def select_all(cls, env):
-        favorites = []
         db = env.get_read_db()
         cursor = db.cursor()
         cursor.execute('SELECT id, path, description FROM vcs_favorites')
-
-        for row in cursor:
-            favorites.append(VCSFavorite(env, db_row=row))
-
-        return favorites
+        return [VCSFavorite(env, db_row=row) for row in cursor]
 
     @classmethod
     def select_all_path_begins_with(cls, env, starts_with):
-        favorites = []
         db = env.get_read_db()
         cursor = db.cursor()
         cursor.execute(('SELECT id, path, description'
@@ -188,10 +182,7 @@ class VCSFavorite(object):
                           db.like_escape(starts_with[:-1] if starts_with.endswith('/') else starts_with) + '%',
                           )
                        )
-        for row in cursor:
-            favorites.append(VCSFavorite(env, db_row=row))
-
-        return favorites
+        return [VCSFavorite(env, db_row=row) for row in cursor]
 
     @classmethod
     def remove_one_by_path(cls, path, env):
