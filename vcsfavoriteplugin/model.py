@@ -35,13 +35,13 @@ class VCSFavoriteDBManager(Component):
     def upgrade_environment(self, db):
         cursor = db.cursor()
         #Run all update from old version to current version
-        for i in range(self.found_db_version, db_default.version):
+        for i in xrange(self.found_db_version+1, db_default.version+1):
             name = 'db%i' % i
             try:
                 upgrades = __import__('upgrades', globals(), locals(), [name])
                 script = getattr(upgrades, name)
             except AttributeError:
-                raise TracError('No upgrade module for %s version %i',
+                raise TracError('No upgrade module for %s version %s',
                                 db_default.name, i)
             script.do_upgrade(self.env, i, cursor)
         cursor.execute('UPDATE system SET value=%s WHERE name=%s',
