@@ -52,10 +52,10 @@ class VCSFavoriteAdmin(Component):
                     sel = [int(sel)]
                 else:
                     try:
-                        for i,item in enumerate(sel):
+                        for i in xrange(len(sel)):
                             sel[i] = int(sel[i])
                     except ValueError:
-                        self.env.log.error("%s selected. Potential Sql injection atempt" % sel)
+                        self.env.log.error("%s selected. Should be integers", (unicode(sel),))
                         raise TracError(_('Internal error'))
 
                 VCSFavorite.remove_list_by_id(sel, self.env)

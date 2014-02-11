@@ -17,8 +17,6 @@ class FavoritesAndSuggestionPathSearch(Component):
         return req.path_info == '/vcsfavorites'
 
     def process_request(self, req):
-        if not req.get_header('X-Requested-With') == 'XMLHttpRequest':
-            raise TracError('This resource works only with header X-Requested-With:XMLHttpRequest')
 
         q = req.args.get('q')
         dirname, prefix = posixpath.split(q)
@@ -26,7 +24,6 @@ class FavoritesAndSuggestionPathSearch(Component):
 
         def kind_order(entry):
             return (not entry['id'], embedded_numbers(entry['id']))
-
 
         bm_entries = {'text': _('Favorites'),
                       'children': [],
@@ -102,9 +99,7 @@ class AddFavorite(Component):
         return req.path_info == '/vcsfavorites/add'
 
     def process_request(self, req):
-        if not req.get_header('X-Requested-With') == 'XMLHttpRequest':
-            raise TracError('This resource works only with header X-Requested-With:XMLHttpRequest')
-        path = unicode(req.args.get('path'))
+        path = req.args.get('path')
         favorite = VCSFavorite(self.env, path=path)
         favorite.insert()
         req.send('','text/plain')
@@ -118,8 +113,6 @@ class RemoveFavorite(Component):
         return req.path_info == '/vcsfavorites/remove'
 
     def process_request(self, req):
-        if not req.get_header('X-Requested-With') == 'XMLHttpRequest':
-            raise TracError('This resource works only with header X-Requested-With:XMLHttpRequest')
-        path = unicode(req.args.get('path'))
+        path = req.args.get('path')
         VCSFavorite.remove_one_by_path(path, self.env)
         req.send('','text/plain')

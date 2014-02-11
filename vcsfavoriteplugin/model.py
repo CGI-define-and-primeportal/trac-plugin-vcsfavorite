@@ -13,69 +13,28 @@ class VCSFavoriteDBManager(Component):
             cursor = db.cursor()
             for table in db_default.schemas:
                 self._create_table(cursor, table)
-            self._create_or_update_table_version(db_default.name,
-                                                 db_default.version
-                                                 )
-
-    def _create_or_update_table_version(self,schema_name,version):
-        @self.env.with_transaction()
-        def do_db_create_or_update(db):
-            try:
-                cursor = db.cursor()
-                cursor.execute('INSERT INTO system (name, value) VALUES (%s, %s)',
-                               (db_default.name, db_default.version))
-            except Exception:
-                cursor = db.cursor()
-                cursor.execute('UPDATE system SET value=%s WHERE name=%s',
-                               (db_default.version, db_default.name))
-
-    def _create_table(self,cursor,table):
-        db_manager, _ = DatabaseManager(self.env)._get_connector()
-        for sql in db_manager.to_sql(table):
-            self.log.debug('Creating table %s ...' % table.name)
-            cursor.execute(sql)
-
-    def _create_non_existing_tabels(self):
-        @self.env.with_transaction()
-        def check(db):
-            cursor = db.cursor()
-            for table in db_default.schemas:
-                try:
-                    sql = 'SELECT * FROM %s' % table.name
-                    cursor.execute(sql)
-                    cursor.fetchone()
-                except Exception:
-                    self.log.debug('No table found with name %s' % table.name)
-                    self._create_table(cursor, table)
-                    return
+            self._insert_table_version()
 
     def environment_needs_upgrade(self, db):
         cursor = db.cursor()
         cursor.execute('SELECT value FROM system WHERE name=%s',
                        (db_default.name,))
         value = cursor.fetchone()
-
-        if not value:
+        self.found_db_version = int(value[0]) if value else -1
+        # If there is no row in system for VCS favorites then the environment
+        # was create before we started to use upgrade scripts.
+        if self.found_db_version == -1:
+            self._insert_table_version()
             self.found_db_version = 0
-        else:
-            self.found_db_version = int(value[0])
-
-        if self.found_db_version < db_default.version:
             return True
-        elif self.found_db_version > db_default.version:
+        if self.found_db_version > db_default.version:
             raise TracError('Database newer than %s version', db_default.name)
-        else:
-            return False
+        return self.found_db_version < db_default.version
 
     def upgrade_environment(self, db):
-
-        #Create all non existing tables in the schema.
-        self._create_non_existing_tabels()
-
         cursor = db.cursor()
-
         #Run all update from old version to current version
-        for i in range(self.found_db_version+1, db_default.version+1):
+        for i in range(self.found_db_version, db_default.version):
             name = 'db%i' % i
             try:
                 upgrades = __import__('upgrades', globals(), locals(), [name])
@@ -83,18 +42,34 @@ class VCSFavoriteDBManager(Component):
             except AttributeError:
                 raise TracError('No upgrade module for %s version %i',
                                 db_default.name, i)
-
             script.do_upgrade(self.env, i, cursor)
-            cursor.execute('UPDATE system SET value=%s WHERE name=%s',
-                           (db_default.version, db_default.name))
+        cursor.execute('UPDATE system SET value=%s WHERE name=%s',
+                       (db_default.version, db_default.name)
+                       )
         db.commit()
-        self._create_or_update_table_version(db_default.name,
-                                     db_default.version
-                                     )
+        self._update_table_version(db_default.name, db_default.version)
         self.log.debug('Upgraded %s database version from %d to %d',
-                      db_default.name, i-1, i)
+                       db_default.name, self.found_db_version, db_default.version
+                       )
 
+    def _insert_table_version(self):
+        @self.env.with_transaction()
+        def do_db_insert(db):
+            cursor = db.cursor()
+            cursor.execute('INSERT INTO system (name, value) VALUES (%s, %s)',
+                           (db_default.name, 0))
 
+    def _update_table_version(self,schema_name,version):
+        @self.env.with_transaction()
+        def do_db_update(db):
+            cursor = db.cursor()
+            cursor.execute('UPDATE system SET value=%s WHERE name=%s',
+                           (version,schema_name))
+
+    def _create_table(self,cursor,table):
+        db_manager, _ = DatabaseManager(self.env)._get_connector()
+        for sql in db_manager.to_sql(table):
+            cursor.execute(sql)
 
 class VCSFavorite(object):
 
@@ -123,8 +98,8 @@ class VCSFavorite(object):
                                + ' VALUES (%s, %s)',
                                (self.path, self.description))
             except Exception, e:
-                if isinstance(e, "IntegrityError"):
-                    raise TracError('Path "%s" already exists' % self.path)
+                if  e.__class__.__name__ == "IntegrityError":
+                    raise TracError('Path "%s" already exists', (self.path,))
                 else:
                     raise e
             self._id = db.get_last_id(cursor, 'vcs_favorites')
@@ -149,7 +124,7 @@ class VCSFavorite(object):
         try:
             int_id = int(_id)
         except ValueError:
-            env.log.error("%s is not an integer. Potential Sql injection atempt" % _id)
+            raise TracError("%s is not an integer.", (_id,))
         db = env.get_read_db()
         cursor = db.cursor()
         cursor.execute('SELECT id, path, description FROM vcs_favorites'
@@ -201,8 +176,7 @@ class VCSFavorite(object):
         try:
             int_id = int(_id)
         except ValueError:
-            env.log.error("%s is not an integer. Potential Sql injection attempt" % _id)
-            raise TracError("%s is not an integer. Potential Sql injection atempt" % _id)
+            raise TracError("%s is not an integer.", (_id,))
         rowcount = 0
         @with_transaction(env)
         def _do_remove_one(db):
