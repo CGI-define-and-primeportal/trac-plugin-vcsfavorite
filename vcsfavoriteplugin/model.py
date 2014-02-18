@@ -29,7 +29,8 @@ class VCSFavoriteDBManager(Component):
             self.found_db_version = 0
             return True
         if self.found_db_version > db_default.version:
-            raise TracError('Database newer than %s version', db_default.name)
+            raise TracError('Database newer than %s version'
+                            % db_default.name)
         return self.found_db_version < db_default.version
 
     def upgrade_environment(self, db):
