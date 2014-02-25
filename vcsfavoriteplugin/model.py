@@ -36,7 +36,7 @@ class VCSFavoriteDBManager(Component):
     def upgrade_environment(self, db):
         cursor = db.cursor()
         #Run all update from old version to current version
-        for i in xrange(self.found_db_version+1, db_default.version+1):
+        for i in xrange(self.found_db_version + 1, db_default.version + 1):
             name = 'db%i' % i
             try:
                 upgrades = __import__('upgrades', globals(), locals(), [name])

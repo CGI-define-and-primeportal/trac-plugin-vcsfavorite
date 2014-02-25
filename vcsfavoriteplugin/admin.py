@@ -43,22 +43,21 @@ class VCSFavoriteAdmin(Component):
         #If form is posted
         if req.method == 'POST':
             if req.args.get('remove'):
-                sel = req.args.get('del_sel')
+                sel = req.args.getlist('del_sel')
                 if not sel:
                     raise TracError(_('No favorites selected'))
-                if not isinstance(sel, list):
-                    sel = [int(sel)]
-                else:
-                    try:
-                        for i in xrange(len(sel)):
-                            sel[i] = int(sel[i])
-                    except ValueError:
-                        self.env.log.error("%s selected. Should be integers", (unicode(sel),))
-                        raise TracError(_('Internal error'))
+                try:
+                    for i in xrange(len(sel)):
+                        sel[i] = int(sel[i])
+                except ValueError:
+                    self.env.log.error("%s selected. Should be integers", (unicode(sel),))
+                    raise TracError(_('Internal error'))
 
                 VCSFavorite.remove_list_by_id(sel, self.env)
-                add_notice(req, _('The selected favorite has been '
-                                  'removed.'))
+                add_notice(req, _('The selected favorite'
+                                  + ('s' if len(sel) > 1 else '')
+                                  + ' has been '
+                                  + 'removed.'))
                 req.redirect(req.href.admin(cat, page))
             elif req.args.get('add'):
                 path = req.args.get('favorite_path')
