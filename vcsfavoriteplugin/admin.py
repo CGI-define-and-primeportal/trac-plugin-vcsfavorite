@@ -21,7 +21,6 @@ class VCSFavoriteAdmin(Component):
 
     #IAdminPanelProvider
     def get_admin_panels(self, req):
-        if 'REPOSITORY_ADMIN' in req.perm:
             yield ('versioncontrol', _("Version Control"), 'favorites', _("Favorites"))
 
     def render_admin_panel(self, req, cat, page, path_info):
@@ -44,7 +43,6 @@ class VCSFavoriteAdmin(Component):
         #If form is posted
         if req.method == 'POST':
             if req.args.get('remove'):
-                req.perm.require('TRAC_ADMIN')
                 sel = req.args.get('del_sel')
                 if not sel:
                     raise TracError(_('No favorites selected'))
@@ -63,7 +61,6 @@ class VCSFavoriteAdmin(Component):
                                   'removed.'))
                 req.redirect(req.href.admin(cat, page))
             elif req.args.get('add'):
-                req.perm.require('TRAC_ADMIN')
                 path = req.args.get('favorite_path')
                 desc = req.args.get('description')
                 favorite = VCSFavorite(self.env, path=path, description=desc)
@@ -71,7 +68,6 @@ class VCSFavoriteAdmin(Component):
                 add_notice(req, _('Favorite created.'))
 
             elif req.args.get('edit'):
-                req.perm.require('TRAC_ADMIN')
                 selected_favorite.path = req.args.get('favorite_path')
                 selected_favorite.description = req.args.get('description')
                 selected_favorite.update()
