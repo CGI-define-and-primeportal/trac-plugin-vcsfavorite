@@ -50,7 +50,7 @@ class VCSFavoriteAdmin(Component):
                     for i in xrange(len(sel)):
                         sel[i] = int(sel[i])
                 except ValueError:
-                    self.env.log.error("%s selected. Should be integers", (unicode(sel),))
+                    self.env.log.error("%s selected. Should be integers", (unicode(sel, 'utf-8'),))
                     raise TracError(_('Internal error'))
 
                 VCSFavorite.remove_list_by_id(sel, self.env)

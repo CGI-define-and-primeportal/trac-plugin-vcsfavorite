@@ -17,26 +17,21 @@ class VCSFavoriteDBManager(Component):
             self._insert_table_version()
 
     def environment_needs_upgrade(self, db):
-        cursor = db.cursor()
-        cursor.execute('SELECT value FROM system WHERE name=%s',
-                       (db_default.name,))
-        value = cursor.fetchone()
-        self.found_db_version = int(value[0]) if value else -1
-        # If there is no row in system for VCS favorites then the environment
-        # was create before we started to use upgrade scripts.
-        if self.found_db_version == -1:
-            self._insert_table_version()
-            self.found_db_version = 0
-            return True
-        if self.found_db_version > db_default.version:
+        current_db_version = self.check_db_version(db)
+        if current_db_version > db_default.version:
             raise TracError('Database newer than %s version'
                             % db_default.name)
-        return self.found_db_version < db_default.version
+        return current_db_version < db_default.version
 
     def upgrade_environment(self, db):
+        current_db_version = self.check_db_version(db)
+        # If there is no row in system for VCS favorites then the environment
+        # was create before we started to use upgrade scripts.
+        if current_db_version < 0:
+            self._insert_table_version()
         cursor = db.cursor()
         #Run all update from old version to current version
-        for i in xrange(self.found_db_version + 1, db_default.version + 1):
+        for i in xrange(current_db_version + 1, db_default.version + 1):
             name = 'db%i' % i
             try:
                 upgrades = __import__('upgrades', globals(), locals(), [name])
@@ -51,8 +46,16 @@ class VCSFavoriteDBManager(Component):
         db.commit()
         self._update_table_version(db_default.name, db_default.version)
         self.log.debug('Upgraded %s database version from %d to %d',
-                       db_default.name, self.found_db_version, db_default.version
+                       db_default.name, current_db_version, db_default.version
                        )
+
+    def check_db_version(self, db):
+        cursor = db.cursor()
+        cursor.execute('SELECT value FROM system WHERE name=%s',
+                       (db_default.name,))
+        value = cursor.fetchone()
+        value = int(value[0]) if value else -1
+        return value
 
     def _insert_table_version(self):
         @self.env.with_transaction()
