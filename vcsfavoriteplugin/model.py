@@ -14,7 +14,8 @@ class VCSFavoriteDBManager(Component):
             cursor = db.cursor()
             for table in db_default.schemas:
                 self._create_table(cursor, table)
-            self._insert_table_version()
+            cursor.execute('INSERT INTO system (name, value) VALUES (%s, %s)',
+                           (db_default.name, db_default.version))
 
     def environment_needs_upgrade(self, db):
         current_db_version = self.check_db_version(db)
@@ -26,9 +27,11 @@ class VCSFavoriteDBManager(Component):
     def upgrade_environment(self, db):
         current_db_version = self.check_db_version(db)
         # If there is no row in system for VCS favorites then the environment
-        # was create before we started to use upgrade scripts.
+        # was created without this plugin, so we can just create the latest
+        # schema
         if current_db_version < 0:
-            self._insert_table_version()
+            self.environment_created()
+            return
         cursor = db.cursor()
         #Run all update from old version to current version
         for i in xrange(current_db_version + 1, db_default.version + 1):
@@ -37,39 +40,25 @@ class VCSFavoriteDBManager(Component):
                 upgrades = __import__('upgrades', globals(), locals(), [name])
                 script = getattr(upgrades, name)
             except AttributeError:
-                raise TracError('No upgrade module for %s version %s',
-                                db_default.name, i)
+                raise TracError("No upgrade module for %s version %s"
+                                % (db_default.name, i))
             script.do_upgrade(self.env, i, cursor)
-        cursor.execute('UPDATE system SET value=%s WHERE name=%s',
-                       (db_default.version, db_default.name)
-                       )
-        db.commit()
-        self._update_table_version(db_default.name, db_default.version)
-        self.log.debug('Upgraded %s database version from %d to %d',
-                       db_default.name, current_db_version, db_default.version
-                       )
+            cursor.execute('UPDATE system SET value=%s WHERE name=%s',
+                           (i, db_default.name))
+            self.log.debug('Upgraded %s database version from %d to %d',
+                           db_default.name, i-1, i)
+            db.commit()
 
     def check_db_version(self, db):
+        """Return the database version recorded in the database, or -1 if no
+        version is recorded.
+        """
         cursor = db.cursor()
         cursor.execute('SELECT value FROM system WHERE name=%s',
                        (db_default.name,))
         value = cursor.fetchone()
         value = int(value[0]) if value else -1
         return value
-
-    def _insert_table_version(self):
-        @self.env.with_transaction()
-        def do_db_insert(db):
-            cursor = db.cursor()
-            cursor.execute('INSERT INTO system (name, value) VALUES (%s, %s)',
-                           (db_default.name, 0))
-
-    def _update_table_version(self, schema_name, version):
-        @self.env.with_transaction()
-        def do_db_update(db):
-            cursor = db.cursor()
-            cursor.execute('UPDATE system SET value=%s WHERE name=%s',
-                           (version, schema_name))
 
     def _create_table(self, cursor, table):
         db_manager, _ = DatabaseManager(self.env)._get_connector()
