@@ -46,7 +46,7 @@ class VCSFavoriteDBManager(Component):
             cursor.execute('UPDATE system SET value=%s WHERE name=%s',
                            (i, db_default.name))
             self.log.debug('Upgraded %s database version from %d to %d',
-                           db_default.name, i-1, i)
+                           db_default.name, i - 1, i)
             db.commit()
 
     def check_db_version(self, db):
@@ -75,7 +75,8 @@ class VCSFavorite(object):
             self._id, self.path, self.description, = db_row
         else:
             self._id = _id
-            self.path = path
+            #paths is only stored with out trailing /
+            self.path = path[:-1] if path.endswith('/') else path
             self.description = description
 
     def _validate_options(self):
@@ -117,24 +118,6 @@ class VCSFavorite(object):
         return rowcount
 
     @classmethod
-    def select_one(cls, _id, env):
-        """ Fetches a VCSFavorite from db """
-        try:
-            int_id = int(_id)
-        except ValueError:
-            raise TracError("%s is not an integer.", (_id,))
-        db = env.get_read_db()
-        cursor = db.cursor()
-        cursor.execute('SELECT id, path, description FROM vcs_favorites'
-                       + ' WHERE id = %s', (int_id,)
-                       )
-        row = cursor.fetchone()
-        if row:
-            return VCSFavorite(env, db_row=row)
-
-        return None
-
-    @classmethod
     def select_all(cls, env):
         db = env.get_read_db()
         cursor = db.cursor()
@@ -170,28 +153,3 @@ class VCSFavorite(object):
             cursor.execute('DELETE FROM vcs_favorites WHERE path = %s', (path,))
             rowcount = cursor.rowcount
         return rowcount
-
-    @classmethod
-    def remove_one_by_id(cls, _id, env):
-        try:
-            int_id = int(_id)
-        except ValueError:
-            raise TracError("%s is not an integer.", (_id,))
-        rowcount = 0
-
-        @with_transaction(env)
-        def _do_remove_one(db):
-            cursor = db.cursor()
-            cursor.execute('DELETE FROM vcs_favorites WHERE id = %s', (_id,))
-            rowcount = cursor.rowcount
-        return rowcount
-
-    @classmethod
-    def remove_list_by_id(cls, favorites, env):
-        """
-        Removes a list of id from favorites.
-        """
-        nr_rows = 0
-        for _id in favorites:
-            nr_rows += cls.remove_one_by_id(_id, env)
-        return nr_rows

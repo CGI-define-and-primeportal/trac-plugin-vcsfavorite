@@ -6,14 +6,22 @@ from trac.util.presentation import to_json
 from trac.util import embedded_numbers, pathjoin
 from vcsfavoriteplugin.model import VCSFavorite
 from trac.util.translation import _
+from trac.web.chrome import ITemplateProvider
+from pkg_resources import resource_filename
 
 
 class FavoritesAndSuggestionPathSearch(Component):
 
-    implements(IRequestHandler)
+    implements(IRequestHandler, ITemplateProvider)
+
+    # ITemplateProvider methods
+    def get_templates_dirs(self):
+        return [resource_filename(__name__, 'templates')]
+
+    def get_htdocs_dirs(self):
+        return [('vcsfavoriteplugin', resource_filename(__name__, 'htdocs'))]
 
     # IRequestHandler methods
-
     def match_request(self, req):
         return req.path_info == '/vcsfavorites'
 
