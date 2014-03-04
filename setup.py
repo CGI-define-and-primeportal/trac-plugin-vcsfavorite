@@ -18,7 +18,6 @@ setup(
     },
     entry_points = {
         'trac.plugins': [
-            'vcsfavoriteplugin.admin = vcsfavoriteplugin.admin',
             'vcsfavoriteplugin.api = vcsfavoriteplugin.api',
             ]},
     install_requires = ['Trac>=0.12', 'Genshi>=0.5',],
