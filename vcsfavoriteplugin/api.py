@@ -82,10 +82,19 @@ class FavoritesAndSuggestionPathSearch(Component):
         repo_entries = {'text': _('Suggestions'),
                         'children': [],
                         }
+
+        # Removes the reponame from path if it's the default alias.
+        # TODO: Remove this as part of #4755
+        default_repo_alias = self.env.config.get('repositories', '.alias')
+        if repos.reponame == default_repo_alias:
+            reponame = ''
+        else:
+            reponame = repos.reponame
+
         if repos:
             try:
-                entries = ({'id': '/' + pathjoin(repos.reponame, e.path),
-                           'text': '/' + pathjoin(repos.reponame, e.path),
+                entries = ({'id': '/' + pathjoin(reponame, e.path),
+                           'text': '/' + pathjoin(reponame, e.path),
                            'is_favorite': False
                             }
                            for e in repos.get_node(path).get_entries()
