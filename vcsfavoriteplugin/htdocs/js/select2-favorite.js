@@ -37,20 +37,20 @@ $(document).ready(function() {
   // Toggle the favorite, this will need to do an Ajax call,
   // and then should redraw the icon
   function toggle_favorite(data,target) {
-    var newState = target.hasClass('icon-star-empty'),
+    var newState = target.hasClass('fa-star-o'),
         path = data.id,
         defaultClasses = 'toggleable';
 
-    target.attr('class', defaultClasses + ' icon-spinner icon-spin');
+    target.attr('class', defaultClasses + ' fa fa-spinner fa-spin');
     $.post(window.tracBaseUrl + 'vcsfavorites/' + (newState ? 'add' : 'remove'), {
       path:path,
       '__FORM_TOKEN': window.formToken
     }, function(data,textStatus,jqXHR){
       if(jqXHR.status == 200){
-        target.attr('class', defaultClasses + ' icon-star' + (newState ? '' : '-empty' ));
+        target.attr('class', defaultClasses + ' fa fa-star' + (newState ? '' : '-empty' ));
       }
       else {
-        target.attr('class', defaultClasses + ' icon-star' + (newState ? '-empty' : '' ));
+        target.attr('class', defaultClasses + ' fa fa-star' + (newState ? '-empty' : '' ));
       }
     });
   }
@@ -78,7 +78,7 @@ $(document).ready(function() {
       var text = object.text,
           icon = "";
       if (object.id && object.hasOwnProperty('is_favorite')){
-        icon = "<i class='toggleable " + (object.is_favorite ?  "icon-star" : "icon-star-empty") + "'></i>";
+        icon = "<i class='toggleable " + (object.is_favorite ?  "fa fa-star" : "fa fa-star-o") + "'></i>";
       }
       return icon + text;
     }
