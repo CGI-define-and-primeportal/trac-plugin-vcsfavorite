@@ -1,6 +1,6 @@
 from trac.versioncontrol.api import RepositoryManager, NoSuchNode
 from trac.web.api import IRequestHandler
-from trac.core import Component, implements
+from trac.core import Component, implements, TracError
 import posixpath
 from trac.util.presentation import to_json
 from trac.util import embedded_numbers, pathjoin
